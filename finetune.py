@@ -1,104 +1,88 @@
-"""
-Finetune WhisperForAudioClassification for Swiss-German dialect ID using audio folder structure.
-Audio directory is expected to contain one subfolder per dialect (e.g., data/ch_gr/, data/ch_sg/, ...)
-Each audio file can also be named <label>_XXXX.wav; the script prefers the parent folder name as label.
-
-Example usage:
-  python finetune.py --audio_dir data\wav --output_dir outputs --per_device_train_batch_size 8 --num_train_epochs 3
-"""
-
-import argparse
-import os
-from collections import defaultdict
-
-import numpy as np
-import torch
-from datasets import Dataset, Audio
 from peft import RandLoraConfig, get_peft_model
+import torch
+import numpy as np
+from dataclasses import dataclass
+from typing import Any
+from datasets import load_dataset, Audio
 from sklearn.metrics import accuracy_score
 from transformers import (
-    AutoFeatureExtractor,
-    WhisperForAudioClassification,
-    Trainer,
-    TrainingArguments,
+        AutoFeatureExtractor,
+        WhisperForAudioClassification,
+        Trainer,
+        TrainingArguments,
 )
 
+def _decode(a: Any):
+    # Handle dict-like audio (datasets Audio feature), torchcodec AudioDecoder, and metadata objects
+    if isinstance(a, dict):
+        # common dict: {"array": np.array, "sampling_rate": int}
+        if "array" in a:
+            return a["array"], a.get("sampling_rate", 16000)
+        # fallback: path/bytes - let decode_example handle if needed
+        if "path" in a or "bytes" in a:
+            # Return as-is; caller can decide to use decode_example on the audio feature
+            return a, None
+    # torchcodec AudioDecoder objects provide get_all_samples() and metadata attribute
+    if hasattr(a, "get_all_samples"):
+        arr = a.get_all_samples()
+        md = getattr(a, "metadata", None)
+        if isinstance(md, dict):
+            sr = md.get("sampling_rate", md.get("sample_rate", 16000))
+        else:
+            sr = getattr(md, "sampling_rate", getattr(md, "sample_rate", 16000))
+        return arr, sr
+    raise TypeError(f"Unknown audio type: {type(a)}")
 
-def parse_args():
-    p = argparse.ArgumentParser()
-    p.add_argument("--audio_dir", required=True, help="Root audio directory containing one subdir per class")
-    p.add_argument("--output_dir", default="outputs")
-    p.add_argument("--model_name", default="openai/whisper-medium")
-    p.add_argument("--per_device_train_batch_size", type=int, default=8)
-    p.add_argument("--num_train_epochs", type=int, default=3)
-    p.add_argument("--learning_rate", type=float, default=1e-4)
-    p.add_argument("--seed", type=int, default=42)
-    p.add_argument("--sampling_rate", type=int, default=16000)
-    return p.parse_args()
+def preprocess(batch):
+    arrays, srs = [], []
+    for a in batch["audio"]:
+        arr, sr = _decode(a)
+        arrays.append(arr)
+        srs.append(sr)
+    sr = srs[0] if srs else 16000
+    #audios = batch["audio"]
+    #arrays = [a["array"] for a in audios]
+    inputs = feature_extractor(arrays, sampling_rate=sr, padding=True, return_tensors="np")
+ 
+    batch["input_features"] = inputs["input_features"].tolist()
+    batch["labels"] = batch["label"]
+ 
+    return batch
 
-
-class DataCollatorPad:
-    """Pad input_features (list of 2D arrays) to the longest in batch."""
-
+@dataclass
+class DataCollator:
+    feature_extractor: Any
     def __call__(self, features):
-        input_feats = [f["input_features"] for f in features]
-        labels = torch.tensor([f["label"] for f in features], dtype=torch.long)
-        seq_lens = [arr.shape[0] for arr in input_feats]
-        feat_dim = input_feats[0].shape[1]
-        max_len = max(seq_lens)
-        batch_size = len(input_feats)
-        padded = np.zeros((batch_size, max_len, feat_dim), dtype=np.float32)
-        attention_mask = np.zeros((batch_size, max_len), dtype=np.float32)
-        for i, arr in enumerate(input_feats):
-            l = arr.shape[0]
-            padded[i, :l, :] = arr
-            attention_mask[i, :l] = 1.0
-        batch = {
-            "input_features": torch.tensor(padded, dtype=torch.float32),
-            "attention_mask": torch.tensor(attention_mask, dtype=torch.float32),
-            "labels": labels,
-        }
+        inputs = [
+            {"input_features": feature["input_features"]} for feature in features
+        ]
+        batch = self.feature_extractor.pad(inputs, return_tensors="pt")
+        batch["labels"] = torch.tensor([feature["labels"] for feature in features], dtype=torch.long)
+
         return batch
 
+def compute_metrics(p):
+    preds = p.predictions
+    if isinstance(preds, tuple):
+        preds = preds[0]
+    y_pred = np.argmax(preds, axis=1)
+    y_true = p.label_ids
+    acc = accuracy_score(y_true, y_pred)
+    return {"accuracy": acc}
 
-def build_examples_from_folders(audio_root, allowed_exts={".wav", ".flac", ".mp3"}):
-    examples = []
-    labels = set()
-    for root, dirs, files in os.walk(audio_root):
-        # skip the top-level root files if any
-        if root == audio_root:
-            continue
-        parent = os.path.basename(root)
-        for f in files:
-            name, ext = os.path.splitext(f)
-            if ext.lower() in allowed_exts:
-                path = os.path.join(root, f)
-                label = parent
-                # fallback: if parent is not informative, try prefix before underscore
-                if not label or label == "":
-                    label = name.split("_")[0]
-                examples.append({"audio": {"path": path}, "label_name": label})
-                labels.add(label)
-    labels = sorted(labels)
-    label2id = {lab: i for i, lab in enumerate(labels)}
-    # convert label_name to id
-    for ex in examples:
-        ex["label"] = label2id[ex.pop("label_name")]
-    return examples, label2id
+if __name__ == "__main__":
+    # MODEL
+    feature_extractor = AutoFeatureExtractor.from_pretrained("openai/whisper-medium")
+    model = WhisperForAudioClassification.from_pretrained("openai/whisper-medium")
 
+    # DATASET
+    ds = load_dataset("audiofolder", data_dir="./data_16k/")
+    ds = ds.cast_column("audio", Audio(sampling_rate=16000))
+    ds = ds.map(preprocess, batched=True, batch_size=32, num_proc=1)
 
-def main():
-    args = parse_args()
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
+    data_collator = DataCollator(feature_extractor=feature_extractor)
 
-    os.makedirs(args.output_dir, exist_ok=True)
-
-    print("Loading feature extractor and model")
-    feature_extractor = AutoFeatureExtractor.from_pretrained(args.model_name)
-    model = WhisperForAudioClassification.from_pretrained(args.model_name)
-
-    # apply PEFT RandLora (keeps small number of params trainable)
+    # PEFT
     randlora_config = RandLoraConfig(
         r=32,
         target_modules=["q_proj", "v_proj", "k_proj", "out_proj"],
@@ -106,72 +90,41 @@ def main():
         bias="none",
     )
     model = get_peft_model(model, randlora_config)
+
+    # configs for LID
+    model.config.num_labels = 8
+    model.config.id2label = {0: "ag", 1: "be", 2: "bs", 3: "gr", 4: "lu", 5: "sg", 6: "vs", 7: "zh"}
+    model.config.label2id = {"ag": 0, "be": 1, "bs": 2, "gr": 3, "lu": 4, "sg": 5, "vs": 6, "zh": 7}
+
+    # classifier size mismatch patch
+    hidden = getattr(model.config, "d_model", getattr(model.config, "hidden_size", None))
+    model.classifier = torch.nn.Linear(hidden, model.config.num_labels)
+
     model.print_trainable_parameters()
 
-    print("Building dataset from audio folders")
-    examples, label2id = build_examples_from_folders(args.audio_dir)
-    if not examples:
-        raise ValueError("No audio examples found under: %s" % args.audio_dir)
-    print(f"Found {len(examples)} audio files across {len(label2id)} labels")
-
-    ds = Dataset.from_list(examples)
-    ds = ds.cast_column("audio", Audio(sampling_rate=args.sampling_rate))
-
-    ds = ds.train_test_split(test_size=0.05, seed=args.seed)
-    train_ds = ds["train"]
-    eval_ds = ds["test"]
-
-    def preprocess(batch):
-        audios = [a["array"] for a in batch["audio"]]
-        inputs = feature_extractor(audios, sampling_rate=args.sampling_rate)
-        batch["input_features"] = inputs["input_features"]
-        return batch
-
-    print("Extracting features (this may take time)")
-    train_ds = train_ds.map(preprocess, remove_columns=["audio"], batched=True, batch_size=16)
-    eval_ds = eval_ds.map(preprocess, remove_columns=["audio"], batched=True, batch_size=16)
-
-    id2label = {v: k for k, v in label2id.items()}
-    model.config.id2label = id2label
-    model.config.label2id = label2id
-
-    def compute_metrics(p):
-        preds = p.predictions
-        if isinstance(preds, tuple):
-            preds = preds[0]
-        y_pred = np.argmax(preds, axis=1)
-        y_true = p.label_ids
-        acc = accuracy_score(y_true, y_pred)
-        return {"accuracy": acc}
-
     training_args = TrainingArguments(
-        output_dir=args.output_dir,
-        per_device_train_batch_size=args.per_device_train_batch_size,
-        per_device_eval_batch_size=args.per_device_train_batch_size,
-        num_train_epochs=args.num_train_epochs,
-        learning_rate=args.learning_rate,
-        evaluation_strategy="epoch",
-        save_strategy="epoch",
+        output_dir="whisper_randlora/exp/",
+        per_device_train_batch_size=8,
+        per_device_eval_batch_size=8,
+        eval_steps=500,
+        save_steps=500,
+        learning_rate=1e-4,
+        num_train_epochs=3,
+        fp16=True,
         logging_steps=50,
-        fp16=torch.cuda.is_available(),
-        push_to_hub=False,
+        load_best_model_at_end=True,
+        metric_for_best_model="accuracy",
     )
 
-    data_collator = DataCollatorPad()
-
     trainer = Trainer(
-        model=model,
         args=training_args,
-        train_dataset=train_ds,
-        eval_dataset=eval_ds,
+        model=model,
+        train_dataset=ds["train"],
+        eval_dataset=ds["test"],
         data_collator=data_collator,
         compute_metrics=compute_metrics,
     )
 
     trainer.train()
-    print("Saving model")
-    trainer.save_model(args.output_dir)
-
-
-if __name__ == "__main__":
-    main()
+    print("Saving Model")
+    trainer.save_model(training_args.output_dir)
