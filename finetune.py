@@ -12,54 +12,38 @@ from transformers import (
         TrainingArguments,
 )
 
-def _decode(a: Any):
-    # Handle dict-like audio (datasets Audio feature), torchcodec AudioDecoder, and metadata objects
-    if isinstance(a, dict):
-        # common dict: {"array": np.array, "sampling_rate": int}
-        if "array" in a:
-            return a["array"], a.get("sampling_rate", 16000)
-        # fallback: path/bytes - let decode_example handle if needed
-        if "path" in a or "bytes" in a:
-            # Return as-is; caller can decide to use decode_example on the audio feature
-            return a, None
-    # torchcodec AudioDecoder objects provide get_all_samples() and metadata attribute
-    if hasattr(a, "get_all_samples"):
-        arr = a.get_all_samples()
-        md = getattr(a, "metadata", None)
-        if isinstance(md, dict):
-            sr = md.get("sampling_rate", md.get("sample_rate", 16000))
-        else:
-            sr = getattr(md, "sampling_rate", getattr(md, "sample_rate", 16000))
-        return arr, sr
-    raise TypeError(f"Unknown audio type: {type(a)}")
-
-def preprocess(batch):
-    arrays, srs = [], []
-    for a in batch["audio"]:
-        arr, sr = _decode(a)
-        arrays.append(arr)
-        srs.append(sr)
-    sr = srs[0] if srs else 16000
-    #audios = batch["audio"]
-    #arrays = [a["array"] for a in audios]
-    inputs = feature_extractor(arrays, sampling_rate=sr, padding=True, return_tensors="np")
- 
-    batch["input_features"] = inputs["input_features"].tolist()
-    batch["labels"] = batch["label"]
- 
-    return batch
-
 @dataclass
 class DataCollator:
     feature_extractor: Any
-    def __call__(self, features):
-        inputs = [
-            {"input_features": feature["input_features"]} for feature in features
-        ]
-        batch = self.feature_extractor.pad(inputs, return_tensors="pt")
-        batch["labels"] = torch.tensor([feature["labels"] for feature in features], dtype=torch.long)
 
-        return batch
+    def __call__(self, features):
+        # Extract and decode audio samples
+        arrays = []
+        labels = []
+
+        for feature in features:
+            audio_decoder = feature["audio"]
+            audio_samples = audio_decoder.get_all_samples()
+            # Convert torch tensor to numpy array
+            arr = np.asarray(audio_samples.data).squeeze().astype(np.float32)
+            arrays.append(arr)
+            labels.append(feature["label"])
+
+        # Get sampling rate from the first sample's metadata
+        sr = getattr(audio_decoder.metadata, "sample_rate", 16000)
+
+        # Extract features without padding first
+        inputs = self.feature_extractor(
+            arrays,
+            sampling_rate=sr,
+            return_tensors="np"
+        )
+
+        # Now pad using the feature extractor's pad method
+        inputs = self.feature_extractor.pad(inputs, return_tensors="pt")
+        inputs["labels"] = torch.tensor(labels, dtype=torch.long)
+
+        return inputs
 
 def compute_metrics(p):
     preds = p.predictions
@@ -73,12 +57,16 @@ def compute_metrics(p):
 if __name__ == "__main__":
     # MODEL
     feature_extractor = AutoFeatureExtractor.from_pretrained("openai/whisper-medium")
-    model = WhisperForAudioClassification.from_pretrained("openai/whisper-medium")
+    model = WhisperForAudioClassification.from_pretrained(
+        "openai/whisper-medium",
+        num_labels=8,
+        id2label={0: "ag", 1: "be", 2: "bs", 3: "gr", 4: "lu", 5: "sg", 6: "vs", 7: "zh"},
+        label2id={"ag": 0, "be": 1, "bs": 2, "gr": 3, "lu": 4, "sg": 5, "vs": 6, "zh": 7},
+    )
 
     # DATASET
     ds = load_dataset("audiofolder", data_dir="./data_16k/")
     ds = ds.cast_column("audio", Audio(sampling_rate=16000))
-    ds = ds.map(preprocess, batched=True, batch_size=32, num_proc=1)
 
     data_collator = DataCollator(feature_extractor=feature_extractor)
 
@@ -91,15 +79,6 @@ if __name__ == "__main__":
     )
     model = get_peft_model(model, randlora_config)
 
-    # configs for LID
-    model.config.num_labels = 8
-    model.config.id2label = {0: "ag", 1: "be", 2: "bs", 3: "gr", 4: "lu", 5: "sg", 6: "vs", 7: "zh"}
-    model.config.label2id = {"ag": 0, "be": 1, "bs": 2, "gr": 3, "lu": 4, "sg": 5, "vs": 6, "zh": 7}
-
-    # classifier size mismatch patch
-    hidden = getattr(model.config, "d_model", getattr(model.config, "hidden_size", None))
-    model.classifier = torch.nn.Linear(hidden, model.config.num_labels)
-
     model.print_trainable_parameters()
 
     training_args = TrainingArguments(
@@ -108,12 +87,14 @@ if __name__ == "__main__":
         per_device_eval_batch_size=8,
         eval_steps=500,
         save_steps=500,
+        save_strategy="best",
         learning_rate=1e-4,
         num_train_epochs=3,
         fp16=True,
         logging_steps=50,
         load_best_model_at_end=True,
         metric_for_best_model="accuracy",
+        remove_unused_columns=False,
     )
 
     trainer = Trainer(
