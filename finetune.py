@@ -82,11 +82,12 @@ if __name__ == "__main__":
     model.print_trainable_parameters()
 
     training_args = TrainingArguments(
-        output_dir="whisper_randlora/exp/",
+        output_dir="exp/",
         per_device_train_batch_size=8,
         per_device_eval_batch_size=8,
         eval_steps=500,
         save_steps=500,
+        eval_strategy="steps",
         save_strategy="best",
         learning_rate=1e-4,
         num_train_epochs=3,
