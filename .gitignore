@@ -218,6 +218,5 @@ __marimo__/
 .streamlit/secrets.toml
 
 # manually added files and directories
-data/
-data_16k/
+data*/
 exp/

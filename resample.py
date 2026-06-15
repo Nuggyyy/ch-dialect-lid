@@ -166,8 +166,14 @@ def main(input_dir, output_dir, target_sr, overwrite):
                     out_label = label if label else 'unknown'
                     out_dir_label = os.path.join(output_dir, split, out_label)
                     os.makedirs(out_dir_label, exist_ok=True)
-                    out_path = os.path.join(out_dir_label, f"{idx:08d}.wav")
-                    sf.write(out_path, arr, samplerate=int(target_sr))
+                    # preserve original basename, write as WAV
+                    base = os.path.splitext(os.path.basename(fpath))[0]
+                    out_filename = f"{base}.wav"
+                    out_path = os.path.join(out_dir_label, out_filename)
+                    if not overwrite and os.path.exists(out_path):
+                        print(f"Skipping existing output={out_path}")
+                    else:
+                        sf.write(out_path, arr, samplerate=int(target_sr))
                 except Exception as e:
                     print(f"Skipping file={fpath} due to error: {e}")
                 idx += 1

@@ -15,6 +15,7 @@ from transformers import (
 @dataclass
 class DataCollator:
     feature_extractor: Any
+    label2id: dict = None
 
     def __call__(self, features):
         # Extract and decode audio samples
@@ -27,7 +28,10 @@ class DataCollator:
             # Convert torch tensor to numpy array
             arr = np.asarray(audio_samples.data).squeeze().astype(np.float32)
             arrays.append(arr)
-            labels.append(feature["label"])
+            # Convert string label to numeric ID
+            label_str = feature["dialect_region"]
+            label_id = self.label2id.get(label_str, 0)
+            labels.append(label_id)
 
         # Get sampling rate from the first sample's metadata
         sr = getattr(audio_decoder.metadata, "sample_rate", 16000)
@@ -59,16 +63,43 @@ if __name__ == "__main__":
     feature_extractor = AutoFeatureExtractor.from_pretrained("openai/whisper-medium")
     model = WhisperForAudioClassification.from_pretrained(
         "openai/whisper-medium",
-        num_labels=8,
-        id2label={0: "ag", 1: "be", 2: "bs", 3: "gr", 4: "lu", 5: "sg", 6: "vs", 7: "zh"},
-        label2id={"ag": 0, "be": 1, "bs": 2, "gr": 3, "lu": 4, "sg": 5, "vs": 6, "zh": 7},
+        num_labels=7,
+        id2label={0: "Zürich", 1: "Innerschweiz", 2: "Wallis", 3: "Basel", 4: "Graubünden", 5: "Bern", 6: "Ostschweiz"},
+        label2id={"Zürich": 0, "Innerschweiz": 1, "Wallis": 2, "Basel": 3, "Graubünden": 4, "Bern": 5, "Ostschweiz": 6},
     )
 
     # DATASET
-    ds = load_dataset("audiofolder", data_dir="./data_16k/")
+    data_files = {
+        "train": "./data_16k/train_balanced.tsv",
+        "test": "./data_16k/test.tsv",
+    }
+    ds = load_dataset("csv", data_files=data_files, sep="\t")
+
+    label2id = {"Zürich": 0, "Innerschweiz": 1, "Wallis": 2, "Basel": 3, "Graubünden": 4, "Bern": 5, "Ostschweiz": 6}
+
+    def test_add_audio(batch, dir="./data_16k/clips__test"):
+        if dir:
+            ids = batch.get("path")
+            batch["audio"] = [
+                f"{dir}/{fname[:-4]}.wav"  # Remove '.mp3' (4 chars) and add '.wav'
+                for fname in ids
+            ]
+        return batch
+
+    def train_add_audio(batch, dir="./data_16k/clips__train_valid"):
+        if dir:
+            ids = batch.get("path")
+            batch["audio"] = [
+                f"{dir}/{fname[:-5]}.wav"  # Remove '.flac' (5 chars) and add '.wav'
+                for fname in ids
+            ]
+        return batch
+
+    ds["train"] = ds["train"].map(train_add_audio, batched=True)
+    ds["test"] = ds["test"].map(test_add_audio, batched=True)
     ds = ds.cast_column("audio", Audio(sampling_rate=16000))
 
-    data_collator = DataCollator(feature_extractor=feature_extractor)
+    data_collator = DataCollator(feature_extractor=feature_extractor, label2id=label2id)
 
     # PEFT
     randlora_config = RandLoraConfig(
@@ -85,17 +116,22 @@ if __name__ == "__main__":
         output_dir="exp/",
         per_device_train_batch_size=8,
         per_device_eval_batch_size=8,
-        eval_steps=500,
-        save_steps=500,
+        gradient_accumulation_steps=4,
+        eval_accumulation_steps=4,
+        eval_on_start=True,
+        eval_steps=1000,
+        save_steps=1000,
         eval_strategy="steps",
         save_strategy="best",
-        learning_rate=1e-4,
-        num_train_epochs=3,
+        learning_rate=5e-5,
+        num_train_epochs=1,
         fp16=True,
-        logging_steps=50,
+        fp16_full_eval=True,
+        logging_steps=100,
         load_best_model_at_end=True,
         metric_for_best_model="accuracy",
         remove_unused_columns=False,
+        optim="adamw_torch_fused"
     )
 
     trainer = Trainer(
