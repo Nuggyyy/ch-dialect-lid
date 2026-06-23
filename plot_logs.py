@@ -72,4 +72,4 @@ def plot_logs(train_csv: str = "train.csv", eval_csv: str = "eval.csv"):
 
 
 if __name__ == "__main__":
-    plot_logs(train_csv="train1.csv", eval_csv="eval1.csv")
+    plot_logs()

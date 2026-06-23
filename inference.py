@@ -50,7 +50,7 @@ class DataCollator:
         return inputs
 
 
-def run_inference(model_path="./exp/checkpoint-4000/", batch_size=8):
+def run_inference(model_path="./exp/", batch_size=8):
     """
     Load fine-tuned model and run inference on test set.
     Compute macro F1 score and other metrics.

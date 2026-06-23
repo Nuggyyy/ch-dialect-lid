@@ -71,4 +71,4 @@ def extract_logs(log_file: str, train_csv: str = "train.csv", eval_csv: str = "e
 
 
 if __name__ == "__main__":
-    extract_logs("logs1.txt", train_csv="train1.csv", eval_csv="eval1.csv")
+    extract_logs("logs.txt")
