@@ -1,0 +1,106 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights: 100%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 367/367 [00:00<00:00, 1217.30it/s]
+[transformers] WhisperForAudioClassification LOAD REPORT from: openai/whisper-medium
+Key                                                          | Status     |
+-------------------------------------------------------------+------------+-
+model.decoder.layers.{0...23}.encoder_attn_layer_norm.bias   | UNEXPECTED |
+model.decoder.layers.{0...23}.fc1.weight                     | UNEXPECTED |
+model.decoder.layers.{0...23}.encoder_attn.k_proj.weight     | UNEXPECTED |
+model.decoder.layers.{0...23}.self_attn.out_proj.weight      | UNEXPECTED |
+model.decoder.layers.{0...23}.self_attn.q_proj.bias          | UNEXPECTED |
+model.decoder.layers.{0...23}.fc2.bias                       | UNEXPECTED |
+model.decoder.layers.{0...23}.final_layer_norm.weight        | UNEXPECTED |
+model.decoder.layers.{0...23}.encoder_attn.q_proj.weight     | UNEXPECTED |
+model.decoder.layers.{0...23}.self_attn.v_proj.weight        | UNEXPECTED |
+model.decoder.layers.{0...23}.self_attn.out_proj.bias        | UNEXPECTED |
+model.decoder.layers.{0...23}.encoder_attn.out_proj.bias     | UNEXPECTED |
+model.decoder.layers.{0...23}.self_attn_layer_norm.bias      | UNEXPECTED |
+model.decoder.layers.{0...23}.self_attn.q_proj.weight        | UNEXPECTED |
+model.decoder.layers.{0...23}.encoder_attn.out_proj.weight   | UNEXPECTED |
+model.decoder.layers.{0...23}.encoder_attn.v_proj.bias       | UNEXPECTED |
+model.decoder.layers.{0...23}.encoder_attn_layer_norm.weight | UNEXPECTED |
+model.decoder.layers.{0...23}.encoder_attn.v_proj.weight     | UNEXPECTED |
+model.decoder.layers.{0...23}.final_layer_norm.bias          | UNEXPECTED |
+model.decoder.layers.{0...23}.encoder_attn.q_proj.bias       | UNEXPECTED |
+model.decoder.layers.{0...23}.self_attn.v_proj.bias          | UNEXPECTED |
+model.decoder.layers.{0...23}.fc2.weight                     | UNEXPECTED |
+model.decoder.layers.{0...23}.fc1.bias                       | UNEXPECTED |
+model.decoder.layers.{0...23}.self_attn.k_proj.weight        | UNEXPECTED |
+model.decoder.layers.{0...23}.self_attn_layer_norm.weight    | UNEXPECTED |
+model.decoder.layer_norm.weight                              | UNEXPECTED |
+model.decoder.embed_tokens.weight                            | UNEXPECTED |
+model.decoder.layer_norm.bias                                | UNEXPECTED |
+model.decoder.embed_positions.weight                         | UNEXPECTED |
+projector.weight                                             | MISSING    |
+classifier.weight                                            | MISSING    |
+classifier.bias                                              | MISSING    |
+projector.bias                                               | MISSING    |
+
+Notes:
+- UNEXPECTED:   can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING:      those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.
+trainable params: 3,508,231 || all params: 310,988,814 || trainable%: 1.1281
+{'eval_loss': '1.97', 'eval_accuracy': '0.1375', 'eval_macro_f1': '0.03966', 'eval_weighted_f1': '0.03966', 'eval_runtime': '838.8', 'eval_samples_per_second': '29.34', 'eval_steps_per_second': '3.667', 'epoch': 0}
+{'loss': '7.118', 'grad_norm': '28.05', 'learning_rate': '4.909e-05', 'epoch': '0.01848'}
+{'loss': '4.331', 'grad_norm': '63.78', 'learning_rate': '4.816e-05', 'epoch': '0.03695'}
+{'loss': '2.188', 'grad_norm': '68.99', 'learning_rate': '4.724e-05', 'epoch': '0.05543'}
+{'loss': '1.342', 'grad_norm': '122', 'learning_rate': '4.631e-05', 'epoch': '0.0739'}
+{'loss': '0.8222', 'grad_norm': '63.7', 'learning_rate': '4.539e-05', 'epoch': '0.09238'}
+{'loss': '0.6766', 'grad_norm': '81.59', 'learning_rate': '4.447e-05', 'epoch': '0.1109'}
+{'loss': '0.497', 'grad_norm': '48.79', 'learning_rate': '4.354e-05', 'epoch': '0.1293'}
+{'loss': '0.3847', 'grad_norm': '91.4', 'learning_rate': '4.262e-05', 'epoch': '0.1478'}
+{'loss': '0.3496', 'grad_norm': '0.3102', 'learning_rate': '4.17e-05', 'epoch': '0.1663'}
+{'loss': '0.3459', 'grad_norm': '107.9', 'learning_rate': '4.077e-05', 'epoch': '0.1848'}
+{'eval_loss': '2.74', 'eval_accuracy': '0.4763', 'eval_macro_f1': '0.4706', 'eval_weighted_f1': '0.4706', 'eval_runtime': '803.3', 'eval_samples_per_second': '30.63', 'eval_steps_per_second': '3.829', 'epoch': '0.1848'}
+{'loss': '0.2787', 'grad_norm': '142.4', 'learning_rate': '3.985e-05', 'epoch': '0.2032'}
+{'loss': '0.355', 'grad_norm': '222.8', 'learning_rate': '3.892e-05', 'epoch': '0.2217'}
+{'loss': '0.2906', 'grad_norm': '16.49', 'learning_rate': '3.8e-05', 'epoch': '0.2402'}
+{'loss': '0.2811', 'grad_norm': '71.1', 'learning_rate': '3.708e-05', 'epoch': '0.2587'}
+{'loss': '0.1943', 'grad_norm': '0.8796', 'learning_rate': '3.615e-05', 'epoch': '0.2771'}
+{'loss': '0.227', 'grad_norm': '0.3824', 'learning_rate': '3.523e-05', 'epoch': '0.2956'}
+{'loss': '0.3051', 'grad_norm': '81.32', 'learning_rate': '3.431e-05', 'epoch': '0.3141'}
+{'loss': '0.194', 'grad_norm': '229.5', 'learning_rate': '3.338e-05', 'epoch': '0.3326'}
+{'loss': '0.1543', 'grad_norm': '0.004947', 'learning_rate': '3.246e-05', 'epoch': '0.351'}
+{'loss': '0.1023', 'grad_norm': '14.32', 'learning_rate': '3.154e-05', 'epoch': '0.3695'}
+{'eval_loss': '3.691', 'eval_accuracy': '0.4632', 'eval_macro_f1': '0.4593', 'eval_weighted_f1': '0.4593', 'eval_runtime': '807.4', 'eval_samples_per_second': '30.47', 'eval_steps_per_second': '3.81', 'epoch': '0.3695'}
+{'loss': '0.163', 'grad_norm': '80.14', 'learning_rate': '3.061e-05', 'epoch': '0.388'}
+{'loss': '0.1176', 'grad_norm': '0.007787', 'learning_rate': '2.969e-05', 'epoch': '0.4065'}
+{'loss': '0.1733', 'grad_norm': '0.08937', 'learning_rate': '2.876e-05', 'epoch': '0.4249'}
+{'loss': '0.1743', 'grad_norm': '0.4168', 'learning_rate': '2.784e-05', 'epoch': '0.4434'}
+{'loss': '0.1424', 'grad_norm': '0.001721', 'learning_rate': '2.692e-05', 'epoch': '0.4619'}
+{'loss': '0.108', 'grad_norm': '0.001405', 'learning_rate': '2.599e-05', 'epoch': '0.4804'}
+{'loss': '0.1372', 'grad_norm': '0.00155', 'learning_rate': '2.507e-05', 'epoch': '0.4988'}
+{'loss': '0.119', 'grad_norm': '0.007412', 'learning_rate': '2.415e-05', 'epoch': '0.5173'}
+{'loss': '0.1104', 'grad_norm': '0.003413', 'learning_rate': '2.322e-05', 'epoch': '0.5358'}
+{'loss': '0.06959', 'grad_norm': '0.002304', 'learning_rate': '2.23e-05', 'epoch': '0.5543'}
+{'eval_loss': '4.084', 'eval_accuracy': '0.4661', 'eval_macro_f1': '0.4469', 'eval_weighted_f1': '0.4469', 'eval_runtime': '806.6', 'eval_samples_per_second': '30.5', 'eval_steps_per_second': '3.814', 'epoch': '0.5543'}
+{'loss': '0.05916', 'grad_norm': '0.06158', 'learning_rate': '2.137e-05', 'epoch': '0.5727'}
+{'loss': '0.09815', 'grad_norm': '0.001188', 'learning_rate': '2.045e-05', 'epoch': '0.5912'}
+{'loss': '0.106', 'grad_norm': '5.239', 'learning_rate': '1.953e-05', 'epoch': '0.6097'}
+{'loss': '0.06486', 'grad_norm': '0.05977', 'learning_rate': '1.86e-05', 'epoch': '0.6282'}
+{'loss': '0.09711', 'grad_norm': '0.1709', 'learning_rate': '1.768e-05', 'epoch': '0.6467'}
+{'loss': '0.05009', 'grad_norm': '138.4', 'learning_rate': '1.676e-05', 'epoch': '0.6651'}
+{'loss': '0.09968', 'grad_norm': '0.001205', 'learning_rate': '1.583e-05', 'epoch': '0.6836'}
+{'loss': '0.04171', 'grad_norm': '21.76', 'learning_rate': '1.491e-05', 'epoch': '0.7021'}
+{'loss': '0.03346', 'grad_norm': '0.001127', 'learning_rate': '1.398e-05', 'epoch': '0.7206'}
+{'loss': '0.06326', 'grad_norm': '0.0007125', 'learning_rate': '1.306e-05', 'epoch': '0.739'}
+{'eval_loss': '4.692', 'eval_accuracy': '0.4508', 'eval_macro_f1': '0.4443', 'eval_weighted_f1': '0.4443', 'eval_runtime': '820.7', 'eval_samples_per_second': '29.98', 'eval_steps_per_second': '3.748', 'epoch': '0.739'}
+{'loss': '0.0664', 'grad_norm': '0.001075', 'learning_rate': '1.214e-05', 'epoch': '0.7575'}
+{'loss': '0.05804', 'grad_norm': '0.001109', 'learning_rate': '1.121e-05', 'epoch': '0.776'}
+{'loss': '0.02031', 'grad_norm': '15.25', 'learning_rate': '1.029e-05', 'epoch': '0.7945'}
+{'loss': '0.0251', 'grad_norm': '0.001851', 'learning_rate': '9.366e-06', 'epoch': '0.8129'}
+{'loss': '0.0311', 'grad_norm': '0.00104', 'learning_rate': '8.443e-06', 'epoch': '0.8314'}
+{'loss': '0.06949', 'grad_norm': '0.001995', 'learning_rate': '7.519e-06', 'epoch': '0.8499'}
+{'loss': '0.04377', 'grad_norm': '0.001151', 'learning_rate': '6.595e-06', 'epoch': '0.8684'}
+{'loss': '0.01779', 'grad_norm': '0.001076', 'learning_rate': '5.672e-06', 'epoch': '0.8868'}
+{'loss': '0.03699', 'grad_norm': '0.0008452', 'learning_rate': '4.748e-06', 'epoch': '0.9053'}
+{'loss': '0.02755', 'grad_norm': '0.001477', 'learning_rate': '3.824e-06', 'epoch': '0.9238'}
+{'eval_loss': '4.7', 'eval_accuracy': '0.4333', 'eval_macro_f1': '0.4271', 'eval_weighted_f1': '0.4271', 'eval_runtime': '815.2', 'eval_samples_per_second': '30.18', 'eval_steps_per_second': '3.773', 'epoch': '0.9238'}
+{'loss': '0.02195', 'grad_norm': '0.001103', 'learning_rate': '2.9e-06', 'epoch': '0.9423'}
+{'loss': '0.02626', 'grad_norm': '0.001188', 'learning_rate': '1.977e-06', 'epoch': '0.9607'}
+{'loss': '0.0458', 'grad_norm': '0.001303', 'learning_rate': '1.053e-06', 'epoch': '0.9792'}
+{'loss': '0.02388', 'grad_norm': '445.2', 'learning_rate': '1.293e-07', 'epoch': '0.9977'}
+{'eval_loss': '4.806', 'eval_accuracy': '0.4307', 'eval_macro_f1': '0.4221', 'eval_weighted_f1': '0.4221', 'eval_runtime': '813.4', 'eval_samples_per_second': '30.25', 'eval_steps_per_second': '3.782', 'epoch': '1'}
+{'train_runtime': '1.801e+04', 'train_samples_per_second': '9.616', 'train_steps_per_second': '0.301', 'train_loss': '0.4248', 'epoch': '1'}
+100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 5413/5413 [5:00:11<00:00,  3.33s/it]
+Saving Model

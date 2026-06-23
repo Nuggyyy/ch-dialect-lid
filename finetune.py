@@ -4,7 +4,7 @@ import numpy as np
 from dataclasses import dataclass
 from typing import Any
 from datasets import load_dataset, Audio
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, f1_score
 from transformers import (
         AutoFeatureExtractor,
         WhisperForAudioClassification,
@@ -56,7 +56,9 @@ def compute_metrics(p):
     y_pred = np.argmax(preds, axis=1)
     y_true = p.label_ids
     acc = accuracy_score(y_true, y_pred)
-    return {"accuracy": acc}
+    macro_f1 = f1_score(y_true, y_pred, average="macro", zero_division=0)
+    weighted_f1 = f1_score(y_true, y_pred, average="weighted", zero_division=0)
+    return {"accuracy": acc, "macro_f1": macro_f1, "weighted_f1": weighted_f1}
 
 if __name__ == "__main__":
     # MODEL
@@ -107,6 +109,7 @@ if __name__ == "__main__":
         target_modules=["q_proj", "v_proj", "k_proj", "out_proj"],
         randlora_dropout=0.1,
         bias="none",
+        modules_to_save=["classifier", "projector"],
     )
     model = get_peft_model(model, randlora_config)
 
