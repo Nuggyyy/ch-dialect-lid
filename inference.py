@@ -3,7 +3,7 @@ import numpy as np
 from dataclasses import dataclass
 from typing import Any
 from datasets import load_dataset, Audio
-from sklearn.metrics import f1_score, accuracy_score, classification_report
+from sklearn.metrics import f1_score, accuracy_score, classification_report, confusion_matrix
 from transformers import (
     AutoFeatureExtractor,
     WhisperForAudioClassification,
@@ -158,6 +158,31 @@ def run_inference(model_path="./exp/", batch_size=8):
         target_names=[id2label[i] for i in range(len(id2label))],
         zero_division=0
     ))
+
+    # Confusion matrix
+    cm = confusion_matrix(all_labels, all_preds, labels=list(range(len(id2label))))
+    print("\nConfusion Matrix (rows=true labels, columns=predicted labels):")
+    labels_names = [id2label[i] for i in range(len(id2label))]
+    header = "".join(f"{name[:10]:>10}" for name in labels_names)
+    print(f"{'':20}{header}")
+    for i, row in enumerate(cm):
+        row_str = "".join(f"{int(x):10d}" for x in row)
+        print(f"{labels_names[i]:<20}{row_str}")
+
+    # Normalized confusion matrix (by true labels)
+    with np.errstate(all='ignore'):
+        cm_norm = cm.astype('float')
+        row_sums = cm_norm.sum(axis=1)
+        # avoid division by zero
+        row_sums[row_sums == 0] = 1
+        cm_norm = cm_norm / row_sums[:, np.newaxis]
+
+    print("\nNormalized Confusion Matrix (rows normalized to sum to 1):")
+    header = "".join(f"{name[:10]:>10}" for name in labels_names)
+    print(f"{'':20}{header}")
+    for i, row in enumerate(cm_norm):
+        row_str = "".join(f"{x:10.3f}" for x in row)
+        print(f"{labels_names[i]:<20}{row_str}")
 
     return {
         "accuracy": accuracy,
